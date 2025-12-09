@@ -264,7 +264,7 @@ app.get("/", (req, res) => {
             err.textContent = '';
             const fd = new FormData(f);
             const password = fd.get('password') || '';
-            const r = await fetch('/api/login', {
+            const r = await fetch('api/login', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ password })
