@@ -29,6 +29,7 @@ if (!PASSWORD) {
 const CONFIG_PATH = path.join(__dirname, "config.json");
 
 function readConfig() {
+  
   const raw = fs.readFileSync(CONFIG_PATH, "utf-8");
   const cfg = JSON.parse(raw);
 
@@ -38,6 +39,16 @@ function readConfig() {
   cfg.maxPlayers = Number(cfg.maxPlayers || 16);
   cfg.collectionId = String(cfg.collectionId || "");
   cfg.extraArgs = Array.isArray(cfg.extraArgs) ? cfg.extraArgs.map(String) : [];
+
+  cfg.port = Number(cfg.port || 27015);
+  cfg.tickrate = Number(cfg.tickrate || 66);
+
+  if (Number.isNaN(cfg.port) || cfg.port < 1) cfg.port = 27015;
+  if (cfg.port > 65535) cfg.port = 27015;
+
+  if (Number.isNaN(cfg.tickrate) || cfg.tickrate < 10) cfg.tickrate = 66;
+  if (cfg.tickrate > 128) cfg.tickrate = 128;
+
 
   // Clamp simple
   if (Number.isNaN(cfg.maxPlayers) || cfg.maxPlayers < 1) cfg.maxPlayers = 1;
@@ -63,31 +74,29 @@ function pushLine(line) {
 }
 
 function buildArgs(cfg) {
-  // Construction en tableau, sans shell string
   const args = [];
 
-  // Les flags courants SRCDS
   args.push(
     "-game", "garrysmod",
-    "+map", cfg.map,
+    "-port", String(cfg.port),
+    "-tickrate", String(cfg.tickrate),
+    "+maxplayers", String(cfg.maxPlayers),
     "+gamemode", cfg.gamemode,
-    "+maxplayers", String(cfg.maxPlayers)
+    "+map", cfg.map
   );
 
-  // Workshop collection
   if (cfg.collectionId && cfg.collectionId.trim() !== "") {
     args.push("+host_workshop_collection", cfg.collectionId.trim());
   }
 
-  // Extra args contrôlés par tableau
   for (const a of cfg.extraArgs) {
-    // petit filtre: interdit newline
     if (a.includes("\n") || a.includes("\r")) continue;
     args.push(a);
   }
 
   return args;
 }
+
 
 function isRunning() {
   return !!gmodProc && !gmodProc.killed;
@@ -255,7 +264,7 @@ app.get("/", (req, res) => {
             err.textContent = '';
             const fd = new FormData(f);
             const password = fd.get('password') || '';
-            const r = await fetch('/api/login', {
+            const r = await fetch('api/login', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ password })
@@ -275,7 +284,7 @@ app.get("/", (req, res) => {
 });
 
 // API auth
-app.post("/api/login", loginLimiter, (req, res) => {
+app.post("api/login", loginLimiter, (req, res) => {
   const { password } = req.body || {};
   if (typeof password !== "string") {
     return res.status(400).json({ ok: false, error: "Bad request" });
@@ -287,13 +296,13 @@ app.post("/api/login", loginLimiter, (req, res) => {
   return res.status(401).json({ ok: false, error: "Mot de passe incorrect" });
 });
 
-app.post("/api/logout", requireAuth, (req, res) => {
+app.post("api/logout", requireAuth, (req, res) => {
   req.session.authed = false;
   res.json({ ok: true });
 });
 
 // Config endpoints
-app.get("/api/config", requireAuth, (req, res) => {
+app.get("api/config", requireAuth, (req, res) => {
   try {
     const cfg = readConfig();
     res.json({ ok: true, config: cfg });
@@ -302,7 +311,7 @@ app.get("/api/config", requireAuth, (req, res) => {
   }
 });
 
-app.post("/api/config", requireAuth, (req, res) => {
+app.post("api/config", requireAuth, (req, res) => {
   try {
     const body = req.body || {};
     const current = readConfig();
@@ -333,26 +342,26 @@ app.post("/api/config", requireAuth, (req, res) => {
 });
 
 // Status + logs
-app.get("/api/status", requireAuth, (req, res) => {
+app.get("api/status", requireAuth, (req, res) => {
   res.json({ ok: true, status: getStatus() });
 });
 
-app.get("/api/logs", requireAuth, (req, res) => {
+app.get("api/logs", requireAuth, (req, res) => {
   res.json({ ok: true, lines: lastLines });
 });
 
 // Control
-app.post("/api/start", requireAuth, (req, res) => {
+app.post("api/start", requireAuth, (req, res) => {
   const r = startServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("/api/stop", requireAuth, (req, res) => {
+app.post("api/stop", requireAuth, (req, res) => {
   const r = stopServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("/api/restart", requireAuth, (req, res) => {
+app.post("api/restart", requireAuth, (req, res) => {
   const r = restartServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });

@@ -52,6 +52,8 @@ function setConfigForm(cfg) {
   configForm.gamemode.value = cfg.gamemode ?? "";
   configForm.maxPlayers.value = cfg.maxPlayers ?? 16;
   configForm.collectionId.value = cfg.collectionId ?? "";
+  configForm.port.value = cfg.port ?? 27015;
+configForm.tickrate.value = cfg.tickrate ?? 66;
   configForm.extraArgs.value = Array.isArray(cfg.extraArgs)
     ? cfg.extraArgs.join("\n")
     : "";
