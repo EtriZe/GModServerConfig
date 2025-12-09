@@ -264,7 +264,7 @@ app.get("/", (req, res) => {
             err.textContent = '';
             const fd = new FormData(f);
             const password = fd.get('password') || '';
-            const r = await fetch('api/login', {
+            const r = await fetch('/api/login', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
               body: JSON.stringify({ password })
@@ -284,7 +284,7 @@ app.get("/", (req, res) => {
 });
 
 // API auth
-app.post("api/login", loginLimiter, (req, res) => {
+app.post("/api/login", loginLimiter, (req, res) => {
   const { password } = req.body || {};
   if (typeof password !== "string") {
     return res.status(400).json({ ok: false, error: "Bad request" });
@@ -296,13 +296,13 @@ app.post("api/login", loginLimiter, (req, res) => {
   return res.status(401).json({ ok: false, error: "Mot de passe incorrect" });
 });
 
-app.post("api/logout", requireAuth, (req, res) => {
+app.post("/api/logout", requireAuth, (req, res) => {
   req.session.authed = false;
   res.json({ ok: true });
 });
 
 // Config endpoints
-app.get("api/config", requireAuth, (req, res) => {
+app.get("/api/config", requireAuth, (req, res) => {
   try {
     const cfg = readConfig();
     res.json({ ok: true, config: cfg });
@@ -311,7 +311,7 @@ app.get("api/config", requireAuth, (req, res) => {
   }
 });
 
-app.post("api/config", requireAuth, (req, res) => {
+app.post("/api/config", requireAuth, (req, res) => {
   try {
     const body = req.body || {};
     const current = readConfig();
@@ -342,26 +342,26 @@ app.post("api/config", requireAuth, (req, res) => {
 });
 
 // Status + logs
-app.get("api/status", requireAuth, (req, res) => {
+app.get("/api/status", requireAuth, (req, res) => {
   res.json({ ok: true, status: getStatus() });
 });
 
-app.get("api/logs", requireAuth, (req, res) => {
+app.get("/api/logs", requireAuth, (req, res) => {
   res.json({ ok: true, lines: lastLines });
 });
 
 // Control
-app.post("api/start", requireAuth, (req, res) => {
+app.post("/api/start", requireAuth, (req, res) => {
   const r = startServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("api/stop", requireAuth, (req, res) => {
+app.post("/api/stop", requireAuth, (req, res) => {
   const r = stopServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("api/restart", requireAuth, (req, res) => {
+app.post("/api/restart", requireAuth, (req, res) => {
   const r = restartServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
