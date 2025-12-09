@@ -1,0 +1,9 @@
+{
+  "map": "gm_construct",
+  "gamemode": "sandbox",
+  "maxPlayers": 16,
+  "collectionId": "",
+  "extraArgs": [
+    "-tickrate", "66"
+  ]
+}

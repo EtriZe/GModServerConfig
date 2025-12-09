@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>GMOD Control Panel</title>
+  <link rel="stylesheet" href="/public/style.css"/>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <div>
+          <div class="title">Garry's Mod Panel</div>
+          <div class="subtitle" id="statusText">Chargement...</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="ghost" id="logoutBtn">Logout</button>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card">
+        <div class="card-head">
+          <h2>Contrôle</h2>
+          <span class="pill" id="pillRun">?</span>
+        </div>
+        <div class="controls">
+          <button id="startBtn">Démarrer</button>
+          <button id="stopBtn" class="warn">Arrêter</button>
+          <button id="restartBtn" class="accent">Relancer</button>
+        </div>
+        <div class="small" id="pidText"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h2>Paramètres de lancement</h2>
+          <span class="small muted">Enregistré dans config.json</span>
+        </div>
+
+        <form id="configForm" class="form">
+          <label>
+            <span>Map</span>
+            <input name="map" placeholder="gm_construct"/>
+          </label>
+
+          <label>
+            <span>Gamemode</span>
+            <input name="gamemode" placeholder="sandbox"/>
+          </label>
+
+          <label>
+            <span>Max players</span>
+            <input name="maxPlayers" type="number" min="1" max="128"/>
+          </label>
+
+          <label>
+            <span>Workshop collection ID</span>
+            <input name="collectionId" placeholder="1234567890"/>
+          </label>
+
+          <label class="full">
+            <span>Extra args (1 par ligne)</span>
+            <textarea name="extraArgs" rows="6" placeholder="-tickrate&#10;66"></textarea>
+          </label>
+
+          <div class="row full">
+            <button type="submit" class="accent">Sauvegarder</button>
+            <button type="button" id="reloadCfgBtn" class="ghost">Recharger</button>
+          </div>
+
+          <div class="small" id="configMsg"></div>
+        </form>
+      </section>
+
+      <section class="card full-height full">
+        <div class="card-head">
+          <h2>Console live</h2>
+          <div class="row">
+            <button id="clearBtn" class="ghost">Effacer l'affichage</button>
+            <button id="refreshLogsBtn" class="ghost">Recharger logs</button>
+          </div>
+        </div>
+        <div id="console" class="console"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/public/app.js"></script>
+</body>
+</html>
