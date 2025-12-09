@@ -74,13 +74,13 @@ async function apiPost(url, body) {
 
 // Initial fetch
 (async () => {
-  const st = await apiGet("/api/status");
+  const st = await apiGet("api/status");
   if (st.ok) setStatus(st.status);
 
-  const cfg = await apiGet("/api/config");
+  const cfg = await apiGet("api/config");
   if (cfg.ok) setConfigForm(cfg.config);
 
-  const logs = await apiGet("/api/logs");
+  const logs = await apiGet("api/logs");
   if (logs.ok) {
     consoleBox.innerHTML = "";
     logs.lines.forEach(addLine);
@@ -100,22 +100,22 @@ socket.on("log", (line) => addLine(line));
 
 // Buttons
 startBtn.addEventListener("click", async () => {
-  const r = await apiPost("/api/start");
+  const r = await apiPost("api/start");
   if (!r.ok) addLine(`[panel] ${r.error || "Start error"}`);
 });
 
 stopBtn.addEventListener("click", async () => {
-  const r = await apiPost("/api/stop");
+  const r = await apiPost("api/stop");
   if (!r.ok) addLine(`[panel] ${r.error || "Stop error"}`);
 });
 
 restartBtn.addEventListener("click", async () => {
-  const r = await apiPost("/api/restart");
+  const r = await apiPost("api/restart");
   if (!r.ok) addLine(`[panel] ${r.error || "Restart error"}`);
 });
 
 logoutBtn.addEventListener("click", async () => {
-  await apiPost("/api/logout");
+  await apiPost("api/logout");
   location.reload();
 });
 
@@ -124,7 +124,7 @@ clearBtn.addEventListener("click", () => {
 });
 
 refreshLogsBtn.addEventListener("click", async () => {
-  const logs = await apiGet("/api/logs");
+  const logs = await apiGet("api/logs");
   if (logs.ok) {
     consoleBox.innerHTML = "";
     logs.lines.forEach(addLine);
@@ -149,7 +149,7 @@ configForm.addEventListener("submit", async (e) => {
     extraArgs: extraArgsLines
   };
 
-  const r = await apiPost("/api/config", payload);
+  const r = await apiPost("api/config", payload);
   if (r.ok) {
     configMsg.textContent = "Sauvegardé.";
   } else {
@@ -158,7 +158,7 @@ configForm.addEventListener("submit", async (e) => {
 });
 
 reloadCfgBtn.addEventListener("click", async () => {
-  const cfg = await apiGet("/api/config");
+  const cfg = await apiGet("api/config");
   if (cfg.ok) {
     setConfigForm(cfg.config);
     configMsg.textContent = "Rechargé.";
