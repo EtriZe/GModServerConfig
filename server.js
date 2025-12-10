@@ -376,6 +376,20 @@ io.on("connection", (socket) => {
   try {
     socket.emit("config", readConfig());
   } catch {}
+
+  socket.on("console:cmd", (cmd) => {
+    if (!serverProcess) return;
+
+    // Sécurité basique
+    if (typeof cmd !== "string") return;
+    if (cmd.length > 200) return;
+
+    try {
+        serverProcess.stdin.write(cmd + "\n");
+    } catch (e) {
+        console.error("Erreur en envoyant la commande :", e);
+    }
+});
 });
 
 server.listen(PORT, "127.0.0.1", () => {
