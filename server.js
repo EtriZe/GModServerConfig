@@ -104,6 +104,98 @@ function isRunning() {
   return !!gmodProc && !gmodProc.killed;
 }
 
+let consoleLogWatcher = null;
+let consoleLogPath = null;
+let consoleLogOffset = 0;
+
+function resolveConsoleLogPath() {
+  const p1 = path.join(GMOD_DIR, "console.log");
+  const p2 = path.join(GMOD_DIR, "garrysmod", "console.log");
+
+  if (fs.existsSync(p1)) return p1;
+  if (fs.existsSync(p2)) return p2;
+
+  // Par défaut on tente le root du cwd
+  return p1;
+}
+
+function startConsoleLogStream(io) {
+  try {
+    consoleLogPath = resolveConsoleLogPath();
+
+    // Si le fichier existe déjà, on se place à la fin
+    if (fs.existsSync(consoleLogPath)) {
+      const st = fs.statSync(consoleLogPath);
+      consoleLogOffset = st.size;
+    } else {
+      consoleLogOffset = 0;
+    }
+
+    // Stop watcher précédent
+    if (consoleLogWatcher) {
+      consoleLogWatcher.close();
+      consoleLogWatcher = null;
+    }
+
+    consoleLogWatcher = fs.watch(path.dirname(consoleLogPath), (evt, filename) => {
+      if (!filename || filename !== path.basename(consoleLogPath)) return;
+
+      // Le fichier peut être recréé/rotated
+      if (!fs.existsSync(consoleLogPath)) {
+        consoleLogOffset = 0;
+        return;
+      }
+
+      const st = fs.statSync(consoleLogPath);
+      if (st.size < consoleLogOffset) {
+        // fichier tronqué -> reset
+        consoleLogOffset = 0;
+      }
+
+      if (st.size === consoleLogOffset) return;
+
+      const stream = fs.createReadStream(consoleLogPath, {
+        start: consoleLogOffset,
+        end: st.size
+      });
+
+      let buff = "";
+      stream.on("data", (chunk) => {
+        buff += chunk.toString("utf-8");
+      });
+
+      stream.on("end", () => {
+        consoleLogOffset = st.size;
+
+        for (const line of buff.split(/\r?\n/)) {
+          if (!line) continue;
+          // On pousse en live dans ta console web
+          pushLine(line);
+          io?.emit("log", line);
+        }
+      });
+    });
+
+    const msg = `[panel] condebug stream ON -> ${consoleLogPath}`;
+    pushLine(msg);
+    io?.emit("log", msg);
+
+  } catch (e) {
+    const msg = `[panel] condebug stream ERROR: ${e?.message || e}`;
+    pushLine(msg);
+    io?.emit("log", msg);
+  }
+}
+
+function stopConsoleLogStream() {
+  if (consoleLogWatcher) {
+    try { consoleLogWatcher.close(); } catch {}
+    consoleLogWatcher = null;
+  }
+  consoleLogPath = null;
+  consoleLogOffset = 0;
+}
+
 function startServer(io) {
   if (isRunning()) return { ok: false, error: "Déjà en cours." };
 
@@ -119,9 +211,11 @@ function startServer(io) {
   io?.emit("log", `[panel] Starting: ${GMOD_CMD} ${args.join(" ")}`);
 
   gmodProc = spawn(GMOD_CMD, args, {
-  cwd: GMOD_DIR,
-  stdio: ["pipe", "pipe", "pipe"]
-});
+    cwd: GMOD_DIR,
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+
+  startConsoleLogStream(io);
 
   gmodProc.stdout.on("data", (d) => {
     const text = d.toString("utf-8");
@@ -155,6 +249,9 @@ function startServer(io) {
 }
 
 function stopServer(io) {
+  
+  stopConsoleLogStream();
+
   pushLine("[panel] Stopping server (gmodProc + anciens srcds_linux)...");
   io?.emit("log", "[panel] Stopping server (gmodProc + anciens srcds_linux)...");
 
