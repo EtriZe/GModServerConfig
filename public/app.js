@@ -177,7 +177,7 @@ sendCmd.onclick = () => {
 
 cmdInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
-    e.preventDefault();      // <-- important pour ne pas soumettre un form
+    e.preventDefault();   // évite le submit de formulaire -> pas de reload
     sendCmd.click();
   }
 });
