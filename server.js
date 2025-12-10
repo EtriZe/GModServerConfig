@@ -103,7 +103,13 @@ function isRunning() {
 }
 
 function startServer(io) {
+  function startServer(io) {
   if (isRunning()) return { ok: false, error: "Déjà en cours." };
+
+  // Nettoyage défensif : s'assurer qu'il ne reste pas de vieux srcds_linux
+  try {
+    spawn("pkill", ["-f", "srcds_linux -game garrysmod"], { cwd: GMOD_DIR });
+  } catch {}
 
   const cfg = readConfig();
   const args = buildArgs(cfg);
@@ -148,21 +154,47 @@ function startServer(io) {
 }
 
 function stopServer(io) {
-  if (!isRunning()) return { ok: false, error: "Aucun serveur en cours." };
+  pushLine("[panel] Stopping server (gmodProc + anciens srcds_linux)...");
+  io?.emit("log", "[panel] Stopping server (gmodProc + anciens srcds_linux)...");
 
-  pushLine("[panel] Stopping server...");
-  io?.emit("log", "[panel] Stopping server...");
-
-  // SIGTERM d'abord
-  try {
-    gmodProc.kill("SIGTERM");
-  } catch (e) {
-    return { ok: false, error: "Impossible d'envoyer SIGTERM." };
+  // 1) On tue proprement le process suivi par le panel
+  if (isRunning()) {
+    try {
+      gmodProc.kill("SIGTERM");
+    } catch (e) {
+      pushLine("[panel] Erreur SIGTERM sur gmodProc.");
+      io?.emit("log", "[panel] Erreur SIGTERM sur gmodProc.");
+    }
   }
 
-  io?.emit("status", getStatus());
+  // 2) On nettoie tous les srcds_linux garrysmod qui traînent encore
+  //    (démarrés à la main ou par une version précédente du panel)
+  try {
+    const killer = spawn("pkill", [
+      "-f",
+      "srcds_linux -game garrysmod"
+    ], {
+      cwd: GMOD_DIR
+    });
+
+    killer.on("close", (code) => {
+      const msg = `[panel] pkill srcds_linux terminé (code=${code}).`;
+      pushLine(msg);
+      io?.emit("log", msg);
+      gmodProc = null;
+      io?.emit("status", getStatus());
+    });
+  } catch (e) {
+    const msg = "[panel] Impossible d'exécuter pkill srcds_linux.";
+    pushLine(msg);
+    io?.emit("log", msg);
+    gmodProc = null;
+    io?.emit("status", getStatus());
+  }
+
   return { ok: true };
 }
+
 
 function restartServer(io) {
   if (!isRunning()) {
