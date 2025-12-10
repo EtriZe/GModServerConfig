@@ -215,26 +215,37 @@ function startServer(io) {
     stdio: ["pipe", "pipe", "pipe"]
   });
 
+  gmodProc.on("error", (err) => {
+  console.log("[PROC ERROR]", err);
+});
+
+console.log("[PROC PID]", gmodProc.pid);
+console.log("[PROC CMD]", GMOD_CMD, args.join(" "));
+
   startConsoleLogStream(io);
 
-  gmodProc.stdout.on("data", (d) => {
-    const text = d.toString("utf-8");
-    for (const line of text.split(/\r?\n/)) {
-      if (!line) continue;
-      pushLine(line);
-      io?.emit("log", line);
-    }
-  });
+ gmodProc.stdout.on("data", (d) => {
+  const text = d.toString("utf-8");
+  console.log("[STDOUT RAW]", JSON.stringify(text));
 
-  gmodProc.stderr.on("data", (d) => {
-    const text = d.toString("utf-8");
-    for (const line of text.split(/\r?\n/)) {
-      if (!line) continue;
-      const msg = `[stderr] ${line}`;
-      pushLine(msg);
-      io?.emit("log", msg);
-    }
-  });
+  for (const line of text.split(/\r?\n/)) {
+    if (!line) continue;
+    pushLine(line);
+    io?.emit("log", line);
+  }
+});
+
+gmodProc.stderr.on("data", (d) => {
+  const text = d.toString("utf-8");
+  console.log("[STDERR RAW]", JSON.stringify(text));
+
+  for (const line of text.split(/\r?\n/)) {
+    if (!line) continue;
+    const msg = `[stderr] ${line}`;
+    pushLine(msg);
+    io?.emit("log", msg);
+  }
+});
 
   gmodProc.on("close", (code, signal) => {
     const msg = `[panel] Server exited (code=${code}, signal=${signal})`;
@@ -249,7 +260,7 @@ function startServer(io) {
 }
 
 function stopServer(io) {
-  
+
   stopConsoleLogStream();
 
   pushLine("[panel] Stopping server (gmodProc + anciens srcds_linux)...");
@@ -507,28 +518,32 @@ io.on("connection", (socket) => {
   } catch {}
 
   socket.on("console:cmd", (cmd) => {
-    console.log("[SOCKET] console:cmd ->", cmd);
-    if (!gmodProc || gmodProc.killed || !gmodProc.stdin) {
-      const msg = "[panel] Serveur non lancé ; commande ignorée.";
-      pushLine(msg);
-      socket.emit("log", msg);
-      return;
-    }
+  console.log("[SOCKET] console:cmd ->", cmd);
 
-    if (typeof cmd !== "string") return;
-    cmd = cmd.trim();
-    if (!cmd) return;
-    if (cmd.length > 200) return;
+  if (!gmodProc || gmodProc.killed || !gmodProc.stdin) {
+    console.log("[CMD] ignored: no process/stdin");
+    const msg = "[panel] Serveur non lancé ; commande ignorée.";
+    pushLine(msg);
+    socket.emit("log", msg);
+    return;
+  }
 
-    try {
-      const logLine = `[console] ${cmd}`;
-      pushLine(logLine);
-      io.emit("log", logLine);
-      gmodProc.stdin.write(cmd + "\n");
-    } catch (e) {
-      console.error("Erreur en envoyant la commande :", e);
-    }
-  });
+  if (typeof cmd !== "string") return;
+  cmd = cmd.trim();
+  if (!cmd) return;
+
+  console.log("[CMD] writing to stdin:", cmd);
+
+  try {
+    const logLine = `[console] ${cmd}`;
+    pushLine(logLine);
+    io?.emit("log", logLine);
+    gmodProc.stdin.write(cmd + "\n");
+  } catch (e) {
+    console.log("[CMD] write error:", e);
+  }
+});
+
 });
 
 server.listen(PORT, "127.0.0.1", () => {
