@@ -210,10 +210,20 @@ function startServer(io) {
   pushLine(`[panel] Starting: ${GMOD_CMD} ${args.join(" ")}`);
   io?.emit("log", `[panel] Starting: ${GMOD_CMD} ${args.join(" ")}`);
 
-  gmodProc = spawn(GMOD_CMD, args, {
-    cwd: GMOD_DIR,
-    stdio: ["pipe", "pipe", "pipe"]
-  });
+ const ld = [
+  path.join(GMOD_DIR, "bin"),
+  GMOD_DIR,
+  process.env.LD_LIBRARY_PATH || ""
+].filter(Boolean).join(":");
+
+gmodProc = spawn(GMOD_CMD, args, {
+  cwd: GMOD_DIR,
+  stdio: ["pipe", "pipe", "pipe"],
+  env: {
+    ...process.env,
+    LD_LIBRARY_PATH: ld
+  }
+});
 
   gmodProc.on("error", (err) => {
   console.log("[PROC ERROR]", err);
