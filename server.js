@@ -377,7 +377,12 @@ io.on("connection", (socket) => {
 
   socket.on("console:cmd", (cmd) => {
     console.log("[SOCKET] console:cmd ->", cmd);
-    if (!gmodProc || gmodProc.killed || !gmodProc.stdin) return;
+    if (!gmodProc || gmodProc.killed || !gmodProc.stdin) {
+      const msg = "[panel] Serveur non lancé ; commande ignorée.";
+      pushLine(msg);
+      socket.emit("log", msg);
+      return;
+    }
 
     if (typeof cmd !== "string") return;
     cmd = cmd.trim();
@@ -385,6 +390,9 @@ io.on("connection", (socket) => {
     if (cmd.length > 200) return;
 
     try {
+      const logLine = `[console] ${cmd}`;
+      pushLine(logLine);
+      io?.emit("log", logLine);
       gmodProc.stdin.write(cmd + "\n");
     } catch (e) {
       console.error("Erreur en envoyant la commande :", e);
