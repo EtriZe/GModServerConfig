@@ -379,6 +379,12 @@ app.get("/api/logs", requireAuth, (req, res) => {
   res.json({ ok: true, lines: lastLines });
 });
 
+app.post("/api/logs/clear", requireAuth, (req, res) => {
+  lastLines = [];
+  io.emit("logs:init", lastLines);
+  res.json({ ok: true });
+});
+
 // Control
 app.post("/api/start", requireAuth, (req, res) => {
   const r = startServer(io);

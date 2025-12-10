@@ -119,8 +119,9 @@ logoutBtn.addEventListener("click", async () => {
   location.reload();
 });
 
-clearBtn.addEventListener("click", () => {
+clearBtn.addEventListener("click", async () => {
   consoleBox.innerHTML = "";
+  await apiPost("api/logs/clear");
 });
 
 refreshLogsBtn.addEventListener("click", async () => {
