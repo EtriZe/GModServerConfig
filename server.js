@@ -76,7 +76,7 @@ function pushLine(line) {
 function buildArgs(cfg) {
   const args = [];
 
-  // IMPORTANT : console + usercon pour accepter les commandes stdin
+  // IMPORTANT : accepter les commandes via stdin
   args.push(
     "-console",
     "-usercon",
@@ -223,6 +223,7 @@ function getStatus() {
 }
 
 // Express app
+// Express app
 const app = express();
 app.set("trust proxy", 1);
 const server = http.createServer(app);
@@ -241,7 +242,7 @@ app.use(session({
   cookie: {
     httpOnly: true,
     sameSite: "lax"
-    // secure: true // active si tu es en HTTPS
+    // secure: true // à activer si HTTPS
   }
 }));
 
@@ -263,57 +264,53 @@ app.use("/public", express.static(path.join(__dirname, "public")));
 
 // Page principale
 app.get("/", (req, res) => {
-  // On sert un mini HTML de login si non authed
   if (!req.session?.authed) {
-    return res.type("html").send(`
-      <!doctype html>
-      <html>
-      <head>
-        <meta charset="utf-8"/>
-        <meta name="viewport" content="width=device-width, initial-scale=1"/>
-        <title>GMOD Panel - Login</title>
-        <style>
-          body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b0f14;color:#e6edf3;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
-          .card{width:min(420px,92vw);background:#111823;border:1px solid #1f2a3a;border-radius:14px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-          h1{font-size:20px;margin:0 0 12px}
-          input{width:100%;padding:12px 10px;border-radius:10px;border:1px solid #2a3a52;background:#0b1220;color:#e6edf3}
-          button{margin-top:12px;width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a52;background:#1b2a44;color:#e6edf3;cursor:pointer}
-          .err{color:#ff7b7b;margin-top:10px;font-size:13px;min-height:18px}
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <h1>GMOD Control Panel</h1>
-          <form id="f">
-            <input type="password" name="password" placeholder="Mot de passe" autocomplete="current-password" />
-            <button type="submit">Entrer</button>
-          </form>
-          <div class="err" id="err"></div>
-        </div>
-        <script>
-          const f = document.getElementById('f');
-          const err = document.getElementById('err');
-          f.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            err.textContent = '';
-            const fd = new FormData(f);
-            const password = fd.get('password') || '';
-            const r = await fetch('api/login', {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({ password })
-            });
-            const j = await r.json().catch(()=>({ok:false,error:'JSON error'}));
-            if(j.ok){ location.reload(); }
-            else{ err.textContent = j.error || 'Login failed'; }
-          });
-        </script>
-      </body>
-      </html>
-    `);
+    return res.type("html").send(`<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>GMOD Panel - Login</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b0f14;color:#e6edf3;display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
+    .card{width:min(420px,92vw);background:#111823;border:1px solid #1f2a3a;border-radius:14px;padding:24px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    h1{font-size:20px;margin:0 0 12px}
+    input{width:100%;padding:12px 10px;border-radius:10px;border:1px solid #2a3a52;background:#0b1220;color:#e6edf3}
+    button{margin-top:12px;width:100%;padding:12px;border-radius:10px;border:1px solid #2a3a52;background:#1b2a44;color:#e6edf3;cursor:pointer}
+    .err{color:#ff7b7b;margin-top:10px;font-size:13px;min-height:18px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>GMOD Control Panel</h1>
+    <form id="f">
+      <input type="password" name="password" placeholder="Mot de passe" autocomplete="current-password" />
+      <button type="submit">Entrer</button>
+    </form>
+    <div class="err" id="err"></div>
+  </div>
+  <script>
+    const f = document.getElementById('f');
+    const err = document.getElementById('err');
+    f.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.textContent = '';
+      const fd = new FormData(f);
+      const password = fd.get('password') || '';
+      const r = await fetch('api/login', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ password })
+      });
+      const j = await r.json().catch(()=>({ok:false,error:'JSON error'}));
+      if(j.ok){ location.reload(); }
+      else{ err.textContent = j.error || 'Login failed'; }
+    });
+  </script>
+</body>
+</html>`);
   }
 
-  // Si authed, on sert l'app front
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -358,13 +355,11 @@ app.post("/api/config", requireAuth, (req, res) => {
       extraArgs: Array.isArray(body.extraArgs) ? body.extraArgs.map(String) : current.extraArgs
     };
 
-    // garde-fous
     if (!next.map) next.map = "gm_construct";
     if (!next.gamemode) next.gamemode = "sandbox";
     if (Number.isNaN(next.maxPlayers) || next.maxPlayers < 1) next.maxPlayers = 1;
     if (next.maxPlayers > 128) next.maxPlayers = 128;
 
-    // Filtre basic args
     next.extraArgs = next.extraArgs.filter(a => a && !a.includes("\n") && !a.includes("\r"));
 
     writeConfig(next);
@@ -400,7 +395,7 @@ app.post("/api/restart", requireAuth, (req, res) => {
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-// Socket auth simple via cookie de session déjà en place
+// Socket.IO
 io.on("connection", (socket) => {
   socket.emit("status", getStatus());
   socket.emit("logs:init", lastLines);
@@ -425,7 +420,7 @@ io.on("connection", (socket) => {
     try {
       const logLine = `[console] ${cmd}`;
       pushLine(logLine);
-      io?.emit("log", logLine);
+      io.emit("log", logLine);
       gmodProc.stdin.write(cmd + "\n");
     } catch (e) {
       console.error("Erreur en envoyant la commande :", e);
