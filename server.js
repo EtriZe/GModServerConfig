@@ -376,6 +376,7 @@ io.on("connection", (socket) => {
   } catch {}
 
   socket.on("console:cmd", (cmd) => {
+    console.log("[SOCKET] console:cmd ->", cmd);
     if (!gmodProc || gmodProc.killed || !gmodProc.stdin) return;
 
     if (typeof cmd !== "string") return;
