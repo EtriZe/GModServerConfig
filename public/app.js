@@ -169,15 +169,16 @@ const cmdInput = document.getElementById("cmd");
 const sendCmd = document.getElementById("sendCmd");
 
 sendCmd.onclick = () => {
-    const c = cmdInput.value.trim();
-    if (!c) return;
-    socket.emit("console:cmd", c);
-    cmdInput.value = "";
+  const c = cmdInput.value.trim();
+  if (!c) return;
+  socket.emit("console:cmd", c);
+  cmdInput.value = "";
 };
 
 cmdInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-        sendCmd.click();
-    }
+  if (e.key === "Enter") {
+    e.preventDefault();      // <-- important pour ne pas soumettre un form
+    sendCmd.click();
+  }
 });
 

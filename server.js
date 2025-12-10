@@ -112,9 +112,9 @@ function startServer(io) {
   io?.emit("log", `[panel] Starting: ${GMOD_CMD} ${args.join(" ")}`);
 
   gmodProc = spawn(GMOD_CMD, args, {
-    cwd: GMOD_DIR,
-    stdio: ["ignore", "pipe", "pipe"]
-  });
+  cwd: GMOD_DIR,
+  stdio: ["pipe", "pipe", "pipe"]
+});
 
   gmodProc.stdout.on("data", (d) => {
     const text = d.toString("utf-8");
@@ -285,7 +285,7 @@ app.get("/", (req, res) => {
 });
 
 // API auth
-app.post("api/login", loginLimiter, (req, res) => {
+app.post("/api/login", loginLimiter, (req, res) => {
   const { password } = req.body || {};
   if (typeof password !== "string") {
     return res.status(400).json({ ok: false, error: "Bad request" });
@@ -297,13 +297,13 @@ app.post("api/login", loginLimiter, (req, res) => {
   return res.status(401).json({ ok: false, error: "Mot de passe incorrect" });
 });
 
-app.post("api/logout", requireAuth, (req, res) => {
+app.post("/api/logout", requireAuth, (req, res) => {
   req.session.authed = false;
   res.json({ ok: true });
 });
 
 // Config endpoints
-app.get("api/config", requireAuth, (req, res) => {
+app.get("/api/config", requireAuth, (req, res) => {
   try {
     const cfg = readConfig();
     res.json({ ok: true, config: cfg });
@@ -312,7 +312,7 @@ app.get("api/config", requireAuth, (req, res) => {
   }
 });
 
-app.post("api/config", requireAuth, (req, res) => {
+app.post("/api/config", requireAuth, (req, res) => {
   try {
     const body = req.body || {};
     const current = readConfig();
@@ -343,53 +343,44 @@ app.post("api/config", requireAuth, (req, res) => {
 });
 
 // Status + logs
-app.get("api/status", requireAuth, (req, res) => {
+app.get("/api/status", requireAuth, (req, res) => {
   res.json({ ok: true, status: getStatus() });
 });
 
-app.get("api/logs", requireAuth, (req, res) => {
+app.get("/api/logs", requireAuth, (req, res) => {
   res.json({ ok: true, lines: lastLines });
 });
 
 // Control
-app.post("api/start", requireAuth, (req, res) => {
+app.post("/api/start", requireAuth, (req, res) => {
   const r = startServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("api/stop", requireAuth, (req, res) => {
+app.post("/api/stop", requireAuth, (req, res) => {
   const r = stopServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
-app.post("api/restart", requireAuth, (req, res) => {
+app.post("/api/restart", requireAuth, (req, res) => {
   const r = restartServer(io);
   res.status(r.ok ? 200 : 400).json(r);
 });
 
 // Socket auth simple via cookie de session déjà en place
-io.on("connection", (socket) => {
-  // On envoie l'état + backlog logs à la connexion
-  socket.emit("status", getStatus());
-  socket.emit("logs:init", lastLines);
-  // Config current
+socket.on("console:cmd", (cmd) => {
+  if (!gmodProc || gmodProc.killed || !gmodProc.stdin) return;
+
+  if (typeof cmd !== "string") return;
+  cmd = cmd.trim();
+  if (!cmd) return;
+  if (cmd.length > 200) return;
+
   try {
-    socket.emit("config", readConfig());
-  } catch {}
-
-  socket.on("console:cmd", (cmd) => {
-    if (!serverProcess) return;
-
-    // Sécurité basique
-    if (typeof cmd !== "string") return;
-    if (cmd.length > 200) return;
-
-    try {
-        serverProcess.stdin.write(cmd + "\n");
-    } catch (e) {
-        console.error("Erreur en envoyant la commande :", e);
-    }
-});
+    gmodProc.stdin.write(cmd + "\n");
+  } catch (e) {
+    console.error("Erreur en envoyant la commande :", e);
+  }
 });
 
 server.listen(PORT, "127.0.0.1", () => {

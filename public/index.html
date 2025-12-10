@@ -91,16 +91,18 @@
         <div class="card-head">
           <h2>Console live</h2>
           <div class="row">
-            <button id="clearBtn" class="ghost">Effacer l'affichage</button>
-            <button id="refreshLogsBtn" class="ghost">Recharger logs</button>
+            <button id="clearBtn" class="ghost" type="button">Effacer l'affichage</button>
+            <button id="refreshLogsBtn" class="ghost" type="button">Recharger logs</button>
           </div>
         </div>
+
         <div id="console" class="console"></div>
+
+        <div class="row" id="console-input">
+          <input id="cmd" placeholder="Commande serveur (ex: status)" autocomplete="off" />
+          <button id="sendCmd" type="button">Envoyer</button>
+        </div>
       </section>
-      <div id="console-input">
-        <input id="cmd" placeholder="Entrez une commande serveur..." autocomplete="off" />
-        <button id="sendCmd">Envoyer</button>
-      </div>
 
     </main>
   </div>
