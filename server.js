@@ -368,19 +368,27 @@ app.post("/api/restart", requireAuth, (req, res) => {
 });
 
 // Socket auth simple via cookie de session déjà en place
-socket.on("console:cmd", (cmd) => {
-  if (!gmodProc || gmodProc.killed || !gmodProc.stdin) return;
-
-  if (typeof cmd !== "string") return;
-  cmd = cmd.trim();
-  if (!cmd) return;
-  if (cmd.length > 200) return;
-
+io.on("connection", (socket) => {
+  socket.emit("status", getStatus());
+  socket.emit("logs:init", lastLines);
   try {
-    gmodProc.stdin.write(cmd + "\n");
-  } catch (e) {
-    console.error("Erreur en envoyant la commande :", e);
-  }
+    socket.emit("config", readConfig());
+  } catch {}
+
+  socket.on("console:cmd", (cmd) => {
+    if (!gmodProc || gmodProc.killed || !gmodProc.stdin) return;
+
+    if (typeof cmd !== "string") return;
+    cmd = cmd.trim();
+    if (!cmd) return;
+    if (cmd.length > 200) return;
+
+    try {
+      gmodProc.stdin.write(cmd + "\n");
+    } catch (e) {
+      console.error("Erreur en envoyant la commande :", e);
+    }
+  });
 });
 
 server.listen(PORT, "127.0.0.1", () => {
