@@ -9,6 +9,7 @@ import { Server as SocketIOServer } from "socket.io";
 import http from "http";
 import dotenv from "dotenv";
 import { spawn } from "child_process";
+import { Rcon } from "rcon-client";
 
 dotenv.config();
 
@@ -62,6 +63,36 @@ function writeConfig(cfg) {
 }
 
 // Process handling
+let rconConn = null;
+
+async function getRcon() {
+  const host = process.env.RCON_HOST || "127.0.0.1";
+  const port = Number(process.env.RCON_PORT || 27015);
+  const password = process.env.RCON_PASSWORD || "";
+
+  if (!password) throw new Error("RCON_PASSWORD manquant dans .env");
+
+  // Si déjà connecté → reuse
+  if (rconConn && rconConn.connected) return rconConn;
+
+  rconConn = await Rcon.connect({
+    host,
+    port,
+    password,
+    timeout: 4000
+  });
+
+  return rconConn;
+}
+
+async function sendRcon(cmd) {
+  const rc = await getRcon();
+  // rcon-client renvoie généralement une string de réponse
+  const res = await rc.send(cmd);
+  return res;
+}
+
+
 let gmodProc = null;
 let lastLines = [];
 const MAX_LINES = 2000;
@@ -527,32 +558,47 @@ io.on("connection", (socket) => {
     socket.emit("config", readConfig());
   } catch {}
 
-  socket.on("console:cmd", (cmd) => {
-  console.log("[SOCKET] console:cmd ->", cmd);
+  socket.on("console:cmd", async (cmd) => {
+      console.log("[SOCKET] console:cmd ->", cmd);
 
-  if (!gmodProc || gmodProc.killed || !gmodProc.stdin) {
-    console.log("[CMD] ignored: no process/stdin");
-    const msg = "[panel] Serveur non lancé ; commande ignorée.";
-    pushLine(msg);
-    socket.emit("log", msg);
-    return;
-  }
+      if (typeof cmd !== "string") return;
+      cmd = cmd.trim();
+      if (!cmd) return;
+      if (cmd.length > 200) return;
 
-  if (typeof cmd !== "string") return;
-  cmd = cmd.trim();
-  if (!cmd) return;
+      // Log côté panel
+      const logLine = `[console] ${cmd}`;
+      pushLine(logLine);
+      io.emit("log", logLine);
 
-  console.log("[CMD] writing to stdin:", cmd);
+      try {
+        // Envoi RCON
+        const out = await sendRcon(cmd);
 
-  try {
-    const logLine = `[console] ${cmd}`;
-    pushLine(logLine);
-    io?.emit("log", logLine);
-    gmodProc.stdin.write(cmd + "\n");
-  } catch (e) {
-    console.log("[CMD] write error:", e);
-  }
-});
+        if (out && String(out).trim() !== "") {
+          for (const line of String(out).split(/\r?\n/)) {
+            if (!line) continue;
+            pushLine(line);
+            io.emit("log", line);
+          }
+        } else {
+          // Certains cmds renvoient vide, on peut afficher un petit marqueur
+          const empty = "[panel] (RCON) commande exécutée (pas de sortie).";
+          pushLine(empty);
+          io.emit("log", empty);
+        }
+
+      } catch (e) {
+        const msg = `[panel] RCON error: ${e?.message || e}`;
+        pushLine(msg);
+        io.emit("log", msg);
+
+        // Si la connexion est morte, on reset pour la prochaine fois
+        try { if (rconConn) rconConn.end(); } catch {}
+        rconConn = null;
+      }
+    });
+
 
 });
 
