@@ -103,7 +103,6 @@ function isRunning() {
 }
 
 function startServer(io) {
-  function startServer(io) {
   if (isRunning()) return { ok: false, error: "Déjà en cours." };
 
   // Nettoyage défensif : s'assurer qu'il ne reste pas de vieux srcds_linux
