@@ -76,7 +76,10 @@ function pushLine(line) {
 function buildArgs(cfg) {
   const args = [];
 
+  // IMPORTANT : console + usercon pour accepter les commandes stdin
   args.push(
+    "-console",
+    "-usercon",
     "-game", "garrysmod",
     "-port", String(cfg.port),
     "-tickrate", String(cfg.tickrate),
@@ -96,7 +99,6 @@ function buildArgs(cfg) {
 
   return args;
 }
-
 
 function isRunning() {
   return !!gmodProc && !gmodProc.killed;
